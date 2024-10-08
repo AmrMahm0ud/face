@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'package:face_compare/permission_service_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:flutter_face_api/flutter_face_api.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() => runApp(new MaterialApp(home: new MyApp()));
 
@@ -17,9 +19,13 @@ class _MyAppState extends State<MyApp> {
   var _uiImage2 = Image.asset('images/portrait.png');
 
   set status(String val) => setState(() => _status = val);
+
   set similarityStatus(String val) => setState(() => _similarityStatus = val);
+
   set livenessStatus(String val) => setState(() => _livenessStatus = val);
+
   set uiImage1(Image val) => setState(() => _uiImage1 = val);
+
   set uiImage2(Image val) => setState(() => _uiImage2 = val);
 
   MatchFacesImage? mfImage1;
@@ -110,9 +116,16 @@ class _MyAppState extends State<MyApp> {
   Widget useGallery(int number) {
     return textButton("Use gallery", () async {
       Navigator.pop(context);
-      var image = await ImagePicker().pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        setImage(File(image.path).readAsBytesSync(), ImageType.PRINTED, number);
+      if (await PermissionServiceHandler()
+          .handleServicePermission(setting: Permission.mediaLibrary)) {
+        await ImagePicker()
+            .pickImage(source: ImageSource.gallery)
+            .then((image) {
+          if (image != null) {
+            setImage(
+                File(image.path).readAsBytesSync(), ImageType.PRINTED, number);
+          }
+        });
       }
     });
   }
@@ -120,9 +133,12 @@ class _MyAppState extends State<MyApp> {
   Widget useCamera(int number) {
     return textButton("Use camera", () async {
       Navigator.pop(context);
-      var response = await faceSdk.startFaceCapture();
-      var image = response.image;
-      if (image != null) setImage(image.image, image.imageType, number);
+      if (await PermissionServiceHandler()
+          .handleServicePermission(setting: Permission.camera)) {
+        var response = await faceSdk.startFaceCapture();
+        var image = response.image;
+        if (image != null) setImage(image.image, image.imageType, number);
+      }
     });
   }
 
@@ -142,6 +158,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   Widget text(String text) => Text(text, style: TextStyle(fontSize: 18));
+
   Widget textButton(String text, Function() onPressed, {ButtonStyle? style}) =>
       TextButton(
         child: Text(text),
